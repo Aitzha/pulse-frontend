@@ -1,7 +1,7 @@
 import type { FetchOptions } from 'ofetch'
 
 type AuthUser = { id: number | string; username: string }
-type AuthResponse = { access_token?: string; token?: string; user?: AuthUser } & Record<string, any>
+type AuthResponse = { accessToken?: string; access_token?: string; token?: string; user?: AuthUser } & Record<string, any>
 
 export const useAuthToken = () => useCookie<string | null>('pulse_token', { default: () => null, sameSite: 'lax' })
 export const useAuthUser = () =>
@@ -30,7 +30,7 @@ export function useAuth() {
   }
 
   function handleAuthResponse(res: AuthResponse) {
-    const t = res.access_token || res.token
+    const t = res.accessToken || res.access_token || res.token
     if (t) token.value = t
     if (res.user) user.value = res.user
     else if (res.username) user.value = { id: res.id ?? '', username: res.username }
