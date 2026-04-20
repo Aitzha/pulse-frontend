@@ -4,7 +4,12 @@ type AuthUser = { id: number | string; username: string }
 type AuthResponse = { access_token?: string; token?: string; user?: AuthUser } & Record<string, any>
 
 export const useAuthToken = () => useCookie<string | null>('pulse_token', { default: () => null, sameSite: 'lax' })
-export const useAuthUser = () => useState<AuthUser | null>('pulse_user', () => null)
+export const useAuthUser = () =>
+  useCookie<AuthUser | null>('pulse_user', {
+    default: () => null,
+    sameSite: 'lax',
+    path: '/',
+  })
 
 export function useAuth() {
   const config = useRuntimeConfig()
@@ -32,13 +37,13 @@ export function useAuth() {
   }
 
   async function login(username: string, password: string) {
-    const res = await request<AuthResponse>('/auth/login', { method: 'POST', body: { username, password } })
+    const res = await request<AuthResponse>('/api/auth/login', { method: 'POST', body: { username, password } })
     handleAuthResponse(res)
     return res
   }
 
   async function register(username: string, password: string) {
-    const res = await request<AuthResponse>('/auth/register', { method: 'POST', body: { username, password } })
+    const res = await request<AuthResponse>('/api/auth/register', { method: 'POST', body: { username, password } })
     handleAuthResponse(res)
     return res
   }

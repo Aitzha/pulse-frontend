@@ -20,10 +20,10 @@ There are no lint or test scripts configured yet.
 
 Auth is centralised in `app/composables/useAuth.ts`. It exposes:
 - `useAuthToken()` — reactive cookie (`pulse_token`) holding the JWT
-- `useAuthUser()` — global Vue state for the logged-in user object
+- `useAuthUser()` — reactive cookie (`pulse_user`) holding `{ id, username }`; cookie-backed so identity survives page reloads alongside the token
 - `useAuth()` — composable with `login`, `register`, `logout`, and a generic `request(path, opts)` helper that automatically attaches the Bearer token
 
-The `request()` helper should be used for all authenticated API calls. The API base URL (`http://localhost:3001` by default) comes from `runtimeConfig.public.apiBase`.
+The `request()` helper should be used for all authenticated API calls. The API base URL (`http://localhost:3001` by default) comes from `runtimeConfig.public.apiBase`. All backend endpoints are mounted under `/api` (e.g. `/api/auth/login`, `/api/auth/register`) — include the prefix when calling `request()`.
 
 ### Route protection
 
