@@ -31,7 +31,12 @@ The `request()` helper should be used for all authenticated API calls. The API b
 
 ### Styling
 
-No component library. Styles are scoped CSS inside each `.vue` file. The design uses a dark palette — background `#0f1115`, surface `#171a21`, border `#242833`, muted text `#9aa3b2`, accent blue `#6ea8ff`. TailwindCSS is installed but mostly unused; prefer extending this existing palette when adding styles.
+Styling is Tailwind-only — pages should not use `<style>` blocks. The design system is defined in two places:
+
+- `tailwind.config.js` extends the theme with the Pulse dark palette: `canvas` (page bg `#0f1115`), `card` (raised surface `#171a21`), `well` (inset/input bg `#0f1218`), `topbar` (`#131620`), `edge` / `edge-strong` (borders), `ink` / `ink-muted` / `ink-soft` / `ink-inverse` (text), `accent` / `accent-hover` (`#6ea8ff`), and `danger`. Use these colour tokens (e.g. `bg-card`, `border-edge`, `text-ink-muted`) instead of hex values.
+- `app/assets/css/tailwind.css` holds the Tailwind entry. Global element defaults (`html`/`body` background, link colour, font) live in `@layer base`. Reusable component classes live in `@layer components`: `surface-card`, `form-input`, `form-label`, `btn-primary`, `btn-ghost`. Prefer these over re-pasting long utility strings for forms and cards.
+
+When adding new surfaces or buttons, extend the `@layer components` block rather than adding scoped `<style>` per page.
 
 ### Planned features
 

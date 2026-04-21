@@ -2,53 +2,57 @@
 definePageMeta({ middleware: ['auth'] })
 
 const { user, logout } = useAuth()
+
+const sections = [
+  {
+    title: 'Finances',
+    description: 'Log income and expenses. Coming soon.',
+    icon: '💸',
+  },
+  {
+    title: 'Activities',
+    description: 'Track habits and daily activities. Coming soon.',
+    icon: '🏃',
+  },
+  {
+    title: 'Insights',
+    description: 'See trends across your data. Coming soon.',
+    icon: '✨',
+  },
+]
 </script>
 
 <template>
-  <div class="home">
-    <header class="topbar">
-      <div class="brand">Pulse</div>
-      <div class="right">
-        <span v-if="user" class="who">{{ user.username }}</span>
-        <button class="logout" @click="logout">Logout</button>
+  <div class="min-h-screen flex flex-col">
+    <header
+      class="flex justify-between items-center px-6 py-4 border-b border-edge bg-topbar/80 backdrop-blur sticky top-0 z-10"
+    >
+      <div class="font-bold text-lg tracking-tight">Pulse</div>
+      <div class="flex gap-4 items-center">
+        <span v-if="user" class="text-ink-muted text-sm">{{ user.username }}</span>
+        <button class="btn-ghost" @click="logout">Logout</button>
       </div>
     </header>
 
-    <main class="content">
-      <h1>Welcome back<span v-if="user">, {{ user.username }}</span> 👋</h1>
-      <p class="lede">Track your finances and activities, all in one place.</p>
+    <main class="flex-1 w-full max-w-5xl mx-auto px-6 py-10">
+      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
+        Welcome back<span v-if="user">, {{ user.username }}</span> 👋
+      </h1>
+      <p class="text-ink-muted mb-10">
+        Track your finances and activities, all in one place.
+      </p>
 
-      <section class="grid">
-        <div class="tile">
-          <h3>Finances</h3>
-          <p>Log income and expenses. Coming soon.</p>
-        </div>
-        <div class="tile">
-          <h3>Activities</h3>
-          <p>Track habits and daily activities. Coming soon.</p>
-        </div>
-        <div class="tile">
-          <h3>Insights</h3>
-          <p>See trends across your data. Coming soon.</p>
-        </div>
+      <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <article
+          v-for="section in sections"
+          :key="section.title"
+          class="surface-card p-6 transition-colors hover:border-edge-strong hover:bg-card/80"
+        >
+          <div class="text-2xl mb-3" aria-hidden="true">{{ section.icon }}</div>
+          <h3 class="font-semibold text-lg m-0 mb-1">{{ section.title }}</h3>
+          <p class="text-ink-muted text-sm m-0">{{ section.description }}</p>
+        </article>
       </section>
     </main>
   </div>
 </template>
-
-<style scoped>
-.home { min-height: 100vh; display: flex; flex-direction: column; }
-.topbar { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid #242833; background: #131620; }
-.brand { font-weight: 700; font-size: 1.2rem; }
-.right { display: flex; gap: 1rem; align-items: center; }
-.who { color: #9aa3b2; font-size: .9rem; }
-.logout { background: transparent; border: 1px solid #2a2f3d; color: #e6e8eb; padding: .4rem .8rem; border-radius: 6px; cursor: pointer; }
-.logout:hover { border-color: #6ea8ff; }
-.content { flex: 1; max-width: 1000px; width: 100%; margin: 0 auto; padding: 2rem 1.5rem; }
-h1 { margin: 0 0 .5rem; }
-.lede { color: #9aa3b2; margin: 0 0 2rem; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
-.tile { background: #171a21; border: 1px solid #242833; border-radius: 12px; padding: 1.25rem; }
-.tile h3 { margin: 0 0 .5rem; }
-.tile p { margin: 0; color: #9aa3b2; font-size: .9rem; }
-</style>

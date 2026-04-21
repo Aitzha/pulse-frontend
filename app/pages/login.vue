@@ -22,29 +22,40 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div class="auth-wrap">
-    <form class="card" @submit.prevent="onSubmit">
-      <h1>Pulse</h1>
-      <p class="sub">Sign in to your account</p>
-      <label>Username<input v-model="username" required autocomplete="username" /></label>
-      <label>Password<input v-model="password" type="password" required autocomplete="current-password" /></label>
-      <p v-if="error" class="error">{{ error }}</p>
-      <button :disabled="loading" type="submit">{{ loading ? 'Signing in…' : 'Sign in' }}</button>
-      <p class="alt">No account? <NuxtLink to="/register">Create one</NuxtLink></p>
+  <div class="min-h-screen grid place-items-center p-4 bg-gradient-to-b from-canvas to-topbar">
+    <form
+      class="surface-card w-full max-w-sm p-8 flex flex-col gap-3 shadow-2xl shadow-black/40"
+      @submit.prevent="onSubmit"
+    >
+      <h1 class="text-3xl font-bold tracking-tight m-0">Pulse</h1>
+      <p class="m-0 mb-3 text-ink-muted">Sign in to your account</p>
+
+      <label class="form-label">
+        Username
+        <input v-model="username" required autocomplete="username" class="form-input" />
+      </label>
+
+      <label class="form-label">
+        Password
+        <input
+          v-model="password"
+          type="password"
+          required
+          autocomplete="current-password"
+          class="form-input"
+        />
+      </label>
+
+      <p v-if="error" class="text-danger text-sm m-0">{{ error }}</p>
+
+      <button :disabled="loading" type="submit" class="btn-primary">
+        {{ loading ? 'Signing in…' : 'Sign in' }}
+      </button>
+
+      <p class="text-center text-sm text-ink-muted m-0 mt-2">
+        No account?
+        <NuxtLink to="/register" class="text-accent hover:underline">Create one</NuxtLink>
+      </p>
     </form>
   </div>
 </template>
-
-<style scoped>
-.auth-wrap { min-height: 100vh; display: grid; place-items: center; padding: 1rem; }
-.card { width: 100%; max-width: 380px; background: #171a21; border: 1px solid #242833; border-radius: 12px; padding: 2rem; display: flex; flex-direction: column; gap: .75rem; }
-h1 { margin: 0; font-size: 1.75rem; }
-.sub { margin: 0 0 1rem; color: #9aa3b2; }
-label { display: flex; flex-direction: column; gap: .35rem; font-size: .85rem; color: #b8c0cc; }
-input { padding: .65rem .75rem; border-radius: 8px; border: 1px solid #2a2f3d; background: #0f1218; color: #e6e8eb; font-size: 1rem; }
-input:focus { outline: none; border-color: #6ea8ff; }
-button { margin-top: .5rem; padding: .75rem; border-radius: 8px; border: none; background: #6ea8ff; color: #0b0d12; font-weight: 600; cursor: pointer; }
-button:disabled { opacity: .6; cursor: not-allowed; }
-.error { color: #ff6b6b; margin: 0; font-size: .85rem; }
-.alt { text-align: center; font-size: .85rem; color: #9aa3b2; margin: .5rem 0 0; }
-</style>

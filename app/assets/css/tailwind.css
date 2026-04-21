@@ -1,3 +1,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #__nuxt {
+    @apply h-full bg-canvas text-ink font-sans antialiased;
+  }
+
+  a {
+    @apply text-accent;
+  }
+}
+
+@layer components {
+  .surface-card {
+    @apply bg-card border border-edge rounded-xl;
+  }
+
+  .form-input {
+    @apply w-full px-3 py-2.5 rounded-lg border border-edge-strong bg-well text-ink text-base transition-colors focus:outline-none focus:border-accent;
+  }
+
+  .form-label {
+    @apply flex flex-col gap-1.5 text-sm text-ink-soft;
+  }
+
+  .btn-primary {
+    @apply mt-2 py-3 rounded-lg border-0 bg-accent text-ink-inverse font-semibold cursor-pointer transition-colors hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent border border-edge-strong text-ink px-3 py-1.5 rounded-md cursor-pointer transition-colors hover:border-accent;
+  }
+}
