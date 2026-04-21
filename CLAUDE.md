@@ -14,7 +14,11 @@ There are no lint or test scripts configured yet.
 
 ## Architecture
 
-**Nuxt 4** app using the `app/` directory convention. All application code lives under `app/`.
+**Nuxt 4** app using the `app/` directory convention. All application code lives under `app/` (pages, components, composables, middleware, plugins, assets). Components in `app/components/` and composables in `app/composables/` are auto-imported by Nuxt — do not write explicit imports for them.
+
+### State
+
+No Pinia/Vuex. Cross-component state lives in composables that wrap `useState('<key>', () => ...)` (SSR-safe) plus `useCookie` for auth. The pattern: one composable per feature exposes reactive state and mutator functions (see `useAuth`, `useActivities`). Persistence is either cookies (auth) or `localStorage` via `import.meta.client` guards (colour preferences).
 
 ### Auth
 
@@ -42,8 +46,20 @@ When adding new surfaces or buttons, extend the `@layer components` block rather
 
 Icons are rendered with FontAwesome (`@fortawesome/vue-fontawesome`). Registration lives in [`app/plugins/fontawesome.ts`](app/plugins/fontawesome.ts) — it imports each icon from `@fortawesome/free-solid-svg-icons`, adds it to the shared `library`, and registers `<FontAwesomeIcon>` globally. `config.autoAddCss = false` is set alongside an explicit import of `@fortawesome/fontawesome-svg-core/styles.css` so SSR renders icons at their final size instead of flashing oversized glyphs.
 
-To use a new icon: import it in the plugin (e.g. `faChartLine`), pass it to `library.add(...)`, then reference it in a template with the kebab-case name: `<FontAwesomeIcon :icon="['fas', 'chart-line']" />`. Prefer FontAwesome icons over raw emoji in UI copy — the `Pulse` wordmark uses `heart-pulse`, the welcome greeting uses `hand`, and the dashboard tiles use `money-bills`, `clock`, and `chart-pie`.
+To use a new icon: import it in the plugin (e.g. `faChartLine`), pass it to `library.add(...)`, then reference it in a template with the kebab-case name: `<FontAwesomeIcon :icon="['fas', 'chart-line']" />`. Prefer FontAwesome icons over raw emoji in UI copy.
+
+### Activities
+
+The `/activities` page is implemented and backed by `useActivities()` (`app/composables/useActivities.ts`). Key conventions that span multiple files:
+
+- **Kazakhstan timezone is authoritative.** All date labels, day boundaries, and the "today" default are computed in `Asia/Almaty` (UTC+5, no DST). The page sends ISO 8601 timestamps with a literal `+05:00` offset (`isoFromKz(date, "HH:MM")`) and reads them back through `Intl.DateTimeFormat` with `timeZone: 'Asia/Almaty'` (`kzTimeFromISO`, `kzDateFromISO`). Never compare raw `Date` objects for day equality — always go through `kzDateString`/`kzDateFromISO`.
+- **Activity shape matches backend DTOs** (`title`, `category`, `startTime: ISO`, optional `endTime: ISO`, optional `durationMinutes`, optional `description`). `activityDurationMinutes()` resolves the effective duration in priority order: `endTime - startTime`, else `durationMinutes`, else 60. That fallback is what makes open-ended activities render as a 1h block.
+- **Colour is a client-only concern.** The backend has no colour field. `useActivities` maintains a `category → hex` map in `localStorage` (key `pulse_activity_colors`); `colorForCategory(category)` returns the stored colour or a deterministic hash fallback from `ACTIVITY_COLORS`. Editing a colour in the modal rewrites the whole category, not just one activity.
+- **Fetching is week-scoped.** The page calls `loadRange(mondayOfWeek, sundayOfWeek)` whenever the week's Monday changes; switching between days inside the same week is a pure client-side filter. `from` is inclusive (`Monday 00:00 +05:00`); `to` is exclusive (`nextMonday 00:00 +05:00`).
+- **Time grid components** (`TimeGridDay.vue`, `TimeGridWeek.vue`) accept raw `Activity[]` and internally compute `startMinutes` / `visibleMinutes` via the composable's helpers. Day grid auto-distributes overlapping activities into columns. Midnight-spanning activities are clamped to the start day.
+
+API endpoints used: `GET/POST /api/activities`, `PATCH/DELETE /api/activities/:id`, with `from`/`to` query params on GET.
 
 ### Planned features
 
-The home dashboard (`app/pages/index.vue`) has three placeholder sections — **Finances**, **Activities**, and **Insights** — that are yet to be built out.
+`Finances` and `Goals` tiles on the home dashboard (`app/pages/index.vue`) are still placeholders.

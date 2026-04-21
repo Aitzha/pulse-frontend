@@ -8,16 +8,19 @@ const sections = [
     title: 'Finances',
     description: 'Log income and expenses. Coming soon.',
     icon: 'money-bills',
+    to: null as string | null,
   },
   {
     title: 'Activities',
-    description: 'Track habits and daily activities. Coming soon.',
+    description: 'Track habits and daily activities.',
     icon: 'clock',
+    to: '/activities',
   },
   {
     title: 'Goals',
     description: 'See trends across your data. Coming soon.',
     icon: 'chart-pie',
+    to: null,
   },
 ]
 </script>
@@ -50,17 +53,29 @@ const sections = [
       </p>
 
       <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <article
-          v-for="section in sections"
-          :key="section.title"
-          class="surface-card p-6 transition-colors hover:border-edge-strong hover:bg-card/80"
-        >
-          <div class="text-2xl mb-3 text-accent" aria-hidden="true">
-            <FontAwesomeIcon :icon="['fas', section.icon]" />
-          </div>
-          <h3 class="font-semibold text-lg m-0 mb-1">{{ section.title }}</h3>
-          <p class="text-ink-muted text-sm m-0">{{ section.description }}</p>
-        </article>
+        <template v-for="section in sections" :key="section.title">
+          <NuxtLink
+            v-if="section.to"
+            :to="section.to"
+            class="surface-card p-6 transition-colors hover:border-edge-strong hover:bg-card/80 block no-underline !text-ink"
+          >
+            <div class="text-2xl mb-3 text-accent" aria-hidden="true">
+              <FontAwesomeIcon :icon="['fas', section.icon]" />
+            </div>
+            <h3 class="font-semibold text-lg m-0 mb-1">{{ section.title }}</h3>
+            <p class="text-ink-muted text-sm m-0">{{ section.description }}</p>
+          </NuxtLink>
+          <article
+            v-else
+            class="surface-card p-6 transition-colors hover:border-edge-strong hover:bg-card/80"
+          >
+            <div class="text-2xl mb-3 text-accent" aria-hidden="true">
+              <FontAwesomeIcon :icon="['fas', section.icon]" />
+            </div>
+            <h3 class="font-semibold text-lg m-0 mb-1">{{ section.title }}</h3>
+            <p class="text-ink-muted text-sm m-0">{{ section.description }}</p>
+          </article>
+        </template>
       </section>
     </main>
   </div>
