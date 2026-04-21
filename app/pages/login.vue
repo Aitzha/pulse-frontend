@@ -27,7 +27,10 @@ async function onSubmit() {
       class="surface-card w-full max-w-sm p-8 flex flex-col gap-3 shadow-2xl shadow-black/40"
       @submit.prevent="onSubmit"
     >
-      <h1 class="text-3xl font-bold tracking-tight m-0">Pulse</h1>
+      <h1 class="text-3xl font-bold tracking-tight m-0 flex items-center gap-2">
+        <FontAwesomeIcon :icon="['fas', 'heart-pulse']" class="text-accent" />
+        <span>Pulse</span>
+      </h1>
       <p class="m-0 mb-3 text-ink-muted">Sign in to your account</p>
 
       <label class="form-label">

@@ -38,6 +38,12 @@ Styling is Tailwind-only — pages should not use `<style>` blocks. The design s
 
 When adding new surfaces or buttons, extend the `@layer components` block rather than adding scoped `<style>` per page.
 
+### Icons
+
+Icons are rendered with FontAwesome (`@fortawesome/vue-fontawesome`). Registration lives in [`app/plugins/fontawesome.ts`](app/plugins/fontawesome.ts) — it imports each icon from `@fortawesome/free-solid-svg-icons`, adds it to the shared `library`, and registers `<FontAwesomeIcon>` globally. `config.autoAddCss = false` is set alongside an explicit import of `@fortawesome/fontawesome-svg-core/styles.css` so SSR renders icons at their final size instead of flashing oversized glyphs.
+
+To use a new icon: import it in the plugin (e.g. `faChartLine`), pass it to `library.add(...)`, then reference it in a template with the kebab-case name: `<FontAwesomeIcon :icon="['fas', 'chart-line']" />`. Prefer FontAwesome icons over raw emoji in UI copy — the `Pulse` wordmark uses `heart-pulse`, the welcome greeting uses `hand`, and the dashboard tiles use `money-bills`, `clock`, and `chart-pie`.
+
 ### Planned features
 
 The home dashboard (`app/pages/index.vue`) has three placeholder sections — **Finances**, **Activities**, and **Insights** — that are yet to be built out.
