@@ -8,6 +8,8 @@ import {
   faHand,
   faChevronLeft,
   faChevronRight,
+  faChevronUp,
+  faChevronDown,
   faPlus,
 } from '@fortawesome/free-solid-svg-icons'
 import '@fortawesome/fontawesome-svg-core/styles.css'
@@ -22,6 +24,8 @@ library.add(
   faHand,
   faChevronLeft,
   faChevronRight,
+  faChevronUp,
+  faChevronDown,
   faPlus,
 )
 

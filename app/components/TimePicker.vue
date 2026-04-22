@@ -20,29 +20,42 @@ function pad(n: number) {
   return n.toString().padStart(2, '0')
 }
 
-const hour = computed(() => props.modelValue.split(':')[0] ?? '')
-const minute = computed(() => props.modelValue.split(':')[1] ?? '')
-
-const hourOptions = computed(() => {
-  const max = props.allowEndOfDay ? 24 : 23
-  return Array.from({ length: max + 1 }, (_, i) => pad(i))
-})
-
-const minuteOptions = computed(() => {
-  const set = new Set<string>()
-  for (let m = 0; m < 60; m += props.step) set.add(pad(m))
-  if (minute.value) set.add(minute.value)
-  return Array.from(set).sort()
-})
-
-function setHour(h: string) {
-  const mm = h === '24' ? '00' : minute.value || '00'
-  emit('update:modelValue', `${h}:${mm}`)
+function current(): { h: number; m: number } {
+  if (!props.modelValue) return { h: 0, m: 0 }
+  const [h, m] = props.modelValue.split(':').map(Number)
+  return { h: h ?? 0, m: m ?? 0 }
 }
 
-function setMinute(m: string) {
-  const h = hour.value || '00'
-  emit('update:modelValue', `${h}:${m}`)
+const hourDisplay = computed(() =>
+  props.modelValue ? props.modelValue.split(':')[0] ?? '--' : '--',
+)
+const minuteDisplay = computed(() =>
+  props.modelValue ? props.modelValue.split(':')[1] ?? '--' : '--',
+)
+
+// Disable minute controls when at 24:00 (end-of-day sentinel).
+const minuteLocked = computed(
+  () => props.allowEndOfDay && hourDisplay.value === '24',
+)
+
+function bumpHour(delta: number) {
+  if (props.disabled) return
+  const { h, m } = current()
+  const range = props.allowEndOfDay ? 25 : 24 // 0..(range-1)
+  const nh = ((h + delta) % range + range) % range
+  const nm = nh === 24 ? 0 : m
+  emit('update:modelValue', `${pad(nh)}:${pad(nm)}`)
+}
+
+function bumpMinute(delta: number) {
+  if (props.disabled || minuteLocked.value) return
+  const { h, m } = current()
+  let total = h * 60 + m + delta
+  const mod = props.allowEndOfDay ? 1441 : 1440
+  total = ((total % mod) + mod) % mod
+  const nh = Math.floor(total / 60)
+  const nm = total % 60
+  emit('update:modelValue', `${pad(nh)}:${pad(nm)}`)
 }
 
 function clear() {
@@ -52,33 +65,65 @@ function clear() {
 
 <template>
   <div
-    class="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg border border-edge-strong bg-well focus-within:border-accent transition-colors"
+    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-edge-strong bg-well focus-within:border-accent transition-colors"
     :class="disabled ? 'opacity-60' : ''"
   >
-    <FontAwesomeIcon :icon="['fas', 'clock']" class="text-ink-muted text-sm mr-1" />
-    <select
-      class="bg-transparent border-0 text-ink text-base tabular-nums outline-none cursor-pointer"
-      :value="hour"
-      :disabled="disabled"
-      @change="setHour(($event.target as HTMLSelectElement).value)"
-    >
-      <option disabled value="">--</option>
-      <option v-for="h in hourOptions" :key="h" :value="h">{{ h }}</option>
-    </select>
-    <span class="text-ink-muted select-none">:</span>
-    <select
-      class="bg-transparent border-0 text-ink text-base tabular-nums outline-none cursor-pointer"
-      :value="minute"
-      :disabled="disabled || hour === '24'"
-      @change="setMinute(($event.target as HTMLSelectElement).value)"
-    >
-      <option disabled value="">--</option>
-      <option v-for="m in minuteOptions" :key="m" :value="m">{{ m }}</option>
-    </select>
+    <FontAwesomeIcon :icon="['fas', 'clock']" class="text-ink-muted text-sm" />
+
+    <div class="flex flex-col items-stretch select-none">
+      <button
+        type="button"
+        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-40 disabled:hover:text-ink-muted"
+        :disabled="disabled"
+        aria-label="Increment hour"
+        @click="bumpHour(1)"
+      >
+        <FontAwesomeIcon :icon="['fas', 'chevron-up']" />
+      </button>
+      <span class="text-lg tabular-nums leading-none py-1 min-w-[1.75em] text-center text-ink">
+        {{ hourDisplay }}
+      </span>
+      <button
+        type="button"
+        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-40 disabled:hover:text-ink-muted"
+        :disabled="disabled"
+        aria-label="Decrement hour"
+        @click="bumpHour(-1)"
+      >
+        <FontAwesomeIcon :icon="['fas', 'chevron-down']" />
+      </button>
+    </div>
+
+    <span class="text-ink-muted text-lg leading-none select-none">:</span>
+
+    <div class="flex flex-col items-stretch select-none">
+      <button
+        type="button"
+        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-40 disabled:hover:text-ink-muted"
+        :disabled="disabled || minuteLocked"
+        :aria-label="`Increment minute by ${step}`"
+        @click="bumpMinute(step)"
+      >
+        <FontAwesomeIcon :icon="['fas', 'chevron-up']" />
+      </button>
+      <span class="text-lg tabular-nums leading-none py-1 min-w-[1.75em] text-center text-ink">
+        {{ minuteDisplay }}
+      </span>
+      <button
+        type="button"
+        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-40 disabled:hover:text-ink-muted"
+        :disabled="disabled || minuteLocked"
+        :aria-label="`Decrement minute by ${step}`"
+        @click="bumpMinute(-step)"
+      >
+        <FontAwesomeIcon :icon="['fas', 'chevron-down']" />
+      </button>
+    </div>
+
     <button
       v-if="!disabled && modelValue"
       type="button"
-      class="text-ink-muted hover:text-ink text-xs px-1 ml-1"
+      class="text-ink-muted hover:text-ink text-sm ml-1"
       aria-label="Clear time"
       @click="clear"
     >

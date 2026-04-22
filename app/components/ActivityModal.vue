@@ -124,7 +124,7 @@ function onDelete() {
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
     @click.self="emit('close')"
   >
-    <div class="surface-card w-full max-w-md p-6 shadow-2xl">
+    <div class="surface-card w-full max-w-lg p-6 shadow-2xl">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold m-0">
           {{ isEdit ? 'Edit activity' : 'New activity' }}
@@ -162,11 +162,7 @@ function onDelete() {
                 :title="`Color for ${subcategory}`"
               />
             </span>
-            <select
-              v-model="subcategory"
-              class="form-input border-l-[6px]"
-              :style="{ borderLeftColor: currentColor }"
-            >
+            <select v-model="subcategory" class="form-input">
               <option v-for="s in subcategoryOptions" :key="s" :value="s">{{ s }}</option>
             </select>
           </label>
@@ -179,11 +175,11 @@ function onDelete() {
 
         <div class="grid grid-cols-2 gap-3">
           <div class="form-label">
-            Start time
+            <span>Start time</span>
             <TimePicker v-model="startTime" />
           </div>
           <div class="form-label">
-            End time <span class="text-ink-muted">(optional, 24:00 = end of day)</span>
+            <span>End time <span class="text-ink-muted">(optional)</span></span>
             <TimePicker v-model="endTime" :allow-end-of-day="true" />
           </div>
         </div>
