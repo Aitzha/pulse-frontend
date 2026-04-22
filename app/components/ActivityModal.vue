@@ -16,8 +16,6 @@ import {
   nowKzTimeRoundedDown,
 } from '~/composables/useActivities'
 
-const MIN_DURATION_MINUTES = 15
-
 type Props = {
   open: boolean
   activity: Activity | null
@@ -86,8 +84,15 @@ watch(category, (next, prev) => {
   if (!subs.includes(subcategory.value)) subcategory.value = subs[0]!
 })
 
-const minEndTime = computed(() =>
-  addMinutesToTime(startTime.value || '00:00', MIN_DURATION_MINUTES),
+const endBeforeStart = computed(() => {
+  if (!endTime.value || !startTime.value) return false
+  const startM = minutesFromTime(startTime.value)
+  const endM = endMinutesForValidation(endTime.value)
+  return endM <= startM
+})
+
+const canSubmit = computed(
+  () => !!title.value.trim() && !!startTime.value && !endBeforeStart.value,
 )
 
 function validate(): string | null {
@@ -95,24 +100,16 @@ function validate(): string | null {
   if (!category.value) return 'Category is required'
   if (!subcategory.value) return 'Subcategory is required'
   if (!startTime.value) return 'Start time is required'
-  if (endTime.value) {
-    const startM = minutesFromTime(startTime.value)
-    const endM = endMinutesForValidation(endTime.value)
-    if (endM < startM + MIN_DURATION_MINUTES) {
-      return `End time must be at least ${MIN_DURATION_MINUTES} minutes after start time`
-    }
-  }
+  if (endBeforeStart.value) return 'End time must be after start time'
   return null
 }
 
-// Keep end time valid when the user moves the start time forward.
-watch(startTime, (next) => {
-  if (!endTime.value) return
-  if (endTime.value === '24:00' || endTime.value === '00:00') return
-  const startM = minutesFromTime(next)
-  const endM = minutesFromTime(endTime.value)
-  if (endM < startM + MIN_DURATION_MINUTES) {
-    endTime.value = addMinutesToTime(next, MIN_DURATION_MINUTES)
+// Surface the end/start conflict inline as the user adjusts times.
+watch([startTime, endTime], () => {
+  if (endBeforeStart.value) {
+    error.value = 'End time must be after start time'
+  } else if (error.value === 'End time must be after start time') {
+    error.value = ''
   }
 })
 
@@ -202,7 +199,7 @@ function onDelete() {
           </div>
           <div class="form-label">
             <span>End time <span class="text-ink-muted">(optional)</span></span>
-            <TimePicker v-model="endTime" :allow-end-of-day="true" :min-time="minEndTime" />
+            <TimePicker v-model="endTime" :allow-end-of-day="true" />
           </div>
         </div>
 
@@ -223,7 +220,7 @@ function onDelete() {
           </button>
           <div class="flex-1" />
           <button type="button" class="btn-ghost" @click="emit('close')">Cancel</button>
-          <button type="submit" class="btn-primary !mt-0 px-4">
+          <button type="submit" class="btn-primary !mt-0 px-4" :disabled="!canSubmit">
             {{ isEdit ? 'Save' : 'Add' }}
           </button>
         </div>

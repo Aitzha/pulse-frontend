@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { minutesFromTime } from '~/composables/useActivities'
 
 type Props = {
   modelValue: string
   allowEndOfDay?: boolean
   step?: number
   disabled?: boolean
-  minTime?: string // "HH:MM" — decrements below this are blocked
 }
 
 const props = withDefaults(defineProps<Props>(), {
   allowEndOfDay: false,
   step: 5,
   disabled: false,
-  minTime: '',
 })
 
 const emit = defineEmits<{ 'update:modelValue': [string] }>()
@@ -40,11 +37,7 @@ const minuteLocked = computed(
   () => props.allowEndOfDay && hourDisplay.value === '24',
 )
 
-const minMinutes = computed(() => (props.minTime ? minutesFromTime(props.minTime) : -1))
-
 function emitValue(nh: number, nm: number) {
-  const candidate = nh * 60 + nm
-  if (candidate < minMinutes.value) return
   emit('update:modelValue', `${pad(nh)}:${pad(nm)}`)
 }
 
@@ -65,13 +58,6 @@ function bumpMinute(delta: number) {
   emitValue(h, nm)
 }
 
-// Disable the decrement arrows when already at or below the minimum.
-const atMinimum = computed(() => {
-  if (minMinutes.value < 0) return false
-  const { h, m } = current()
-  return h * 60 + m <= minMinutes.value
-})
-
 function clear() {
   emit('update:modelValue', '')
 }
@@ -88,7 +74,7 @@ function clear() {
       <button
         type="button"
         class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
-        :disabled="disabled || atMinimum"
+        :disabled="disabled"
         aria-label="Earlier hour"
         @click="bumpHour(-1)"
       >
@@ -114,7 +100,7 @@ function clear() {
       <button
         type="button"
         class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
-        :disabled="disabled || minuteLocked || atMinimum"
+        :disabled="disabled || minuteLocked"
         :aria-label="`Earlier minute by ${step}`"
         @click="bumpMinute(-step)"
       >
