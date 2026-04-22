@@ -240,6 +240,23 @@ export function activityModalEndTime(a: Activity): string {
 
 // ---------- main composable ----------
 
+// Backend stores activities in MongoDB, so responses come back with `_id`
+// rather than `id`. Normalise so the rest of the app can rely on `id`.
+function normalizeActivity(raw: any): Activity {
+  const id = raw?.id ?? raw?._id
+  return {
+    id: id != null ? String(id) : '',
+    title: raw?.title ?? '',
+    description: raw?.description || undefined,
+    category: raw?.category ?? '',
+    subcategory: raw?.subcategory ?? '',
+    startTime: raw?.startTime ?? '',
+    endTime: raw?.endTime || undefined,
+    durationMinutes:
+      typeof raw?.durationMinutes === 'number' ? raw.durationMinutes : undefined,
+  }
+}
+
 export function useActivities() {
   const { request } = useAuth()
   const activities = useState<Activity[]>('pulse_activities', () => [])
@@ -270,10 +287,10 @@ export function useActivities() {
     const to = `${addDays(toDate, 1)}T00:00:00${KZ_OFFSET}`
     loading.value = true
     try {
-      const data = await request<Activity[]>(
+      const data = await request<any[]>(
         `/api/activities?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
       )
-      activities.value = Array.isArray(data) ? data : []
+      activities.value = Array.isArray(data) ? data.map(normalizeActivity) : []
       lastRange.value = { from, to }
     } finally {
       loading.value = false
@@ -281,19 +298,21 @@ export function useActivities() {
   }
 
   async function create(payload: CreateActivityPayload): Promise<Activity> {
-    const created = await request<Activity>('/api/activities', {
+    const raw = await request<any>('/api/activities', {
       method: 'POST',
       body: payload,
     })
+    const created = normalizeActivity(raw)
     activities.value = [...activities.value, created]
     return created
   }
 
   async function update(id: string, patch: UpdateActivityPayload): Promise<Activity> {
-    const updated = await request<Activity>(`/api/activities/${id}`, {
+    const raw = await request<any>(`/api/activities/${id}`, {
       method: 'PATCH',
       body: patch,
     })
+    const updated = normalizeActivity(raw)
     activities.value = activities.value.map(a => (a.id === id ? updated : a))
     return updated
   }

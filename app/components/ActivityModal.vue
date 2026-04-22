@@ -153,19 +153,23 @@ function onDelete() {
             </select>
           </label>
           <label class="form-label">
-            Subcategory
-            <select v-model="subcategory" class="form-input">
+            <span class="flex items-center gap-2">
+              <span>Subcategory</span>
+              <span
+                class="w-3 h-3 rounded-full inline-block ring-1 ring-edge"
+                :style="{ backgroundColor: currentColor }"
+                :aria-label="`Color for ${subcategory}`"
+                :title="`Color for ${subcategory}`"
+              />
+            </span>
+            <select
+              v-model="subcategory"
+              class="form-input border-l-[6px]"
+              :style="{ borderLeftColor: currentColor }"
+            >
               <option v-for="s in subcategoryOptions" :key="s" :value="s">{{ s }}</option>
             </select>
           </label>
-        </div>
-
-        <div class="flex items-center gap-2 text-xs text-ink-muted">
-          <span
-            class="w-3.5 h-3.5 rounded-sm inline-block"
-            :style="{ backgroundColor: currentColor }"
-          />
-          <span>Color is set automatically based on subcategory.</span>
         </div>
 
         <label class="form-label">

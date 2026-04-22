@@ -2,9 +2,9 @@
 import { computed } from 'vue'
 
 type Props = {
-  modelValue: string // "HH:MM", or "" for empty
-  allowEndOfDay?: boolean // extends hour options up to 24
-  step?: number // minute step, default 5
+  modelValue: string
+  allowEndOfDay?: boolean
+  step?: number
   disabled?: boolean
 }
 
@@ -28,8 +28,6 @@ const hourOptions = computed(() => {
   return Array.from({ length: max + 1 }, (_, i) => pad(i))
 })
 
-// Minute options include the step grid plus the current value (in case the
-// backend returns a minute that doesn't land on a step boundary).
 const minuteOptions = computed(() => {
   const set = new Set<string>()
   for (let m = 0; m < 60; m += props.step) set.add(pad(m))
@@ -38,7 +36,7 @@ const minuteOptions = computed(() => {
 })
 
 function setHour(h: string) {
-  const mm = h === '24' ? '00' : (minute.value || '00')
+  const mm = h === '24' ? '00' : minute.value || '00'
   emit('update:modelValue', `${h}:${mm}`)
 }
 
@@ -53,9 +51,13 @@ function clear() {
 </script>
 
 <template>
-  <div class="flex items-center gap-1.5">
+  <div
+    class="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg border border-edge-strong bg-well focus-within:border-accent transition-colors"
+    :class="disabled ? 'opacity-60' : ''"
+  >
+    <FontAwesomeIcon :icon="['fas', 'clock']" class="text-ink-muted text-sm mr-1" />
     <select
-      class="form-input !py-2 !px-2 !w-auto tabular-nums"
+      class="bg-transparent border-0 text-ink text-base tabular-nums outline-none cursor-pointer"
       :value="hour"
       :disabled="disabled"
       @change="setHour(($event.target as HTMLSelectElement).value)"
@@ -65,7 +67,7 @@ function clear() {
     </select>
     <span class="text-ink-muted select-none">:</span>
     <select
-      class="form-input !py-2 !px-2 !w-auto tabular-nums"
+      class="bg-transparent border-0 text-ink text-base tabular-nums outline-none cursor-pointer"
       :value="minute"
       :disabled="disabled || hour === '24'"
       @change="setMinute(($event.target as HTMLSelectElement).value)"
@@ -76,8 +78,8 @@ function clear() {
     <button
       v-if="!disabled && modelValue"
       type="button"
-      class="text-ink-muted hover:text-ink text-xs px-1"
-      :aria-label="'Clear time'"
+      class="text-ink-muted hover:text-ink text-xs px-1 ml-1"
+      aria-label="Clear time"
       @click="clear"
     >
       &times;
