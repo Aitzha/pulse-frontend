@@ -61,7 +61,7 @@ The `/activities` page is implemented and backed by `useActivities()` (`app/comp
 - **End-of-day sentinel.** The UI lets users set the end time to `24:00` (or `00:00`) to mean "until end of day"; `endTimeToIso()` translates that to the next day's `00:00 +05:00` ISO, and `activityEndLabelOn()` / `activityModalEndTime()` render it back as `24:00` on the start day.
 - **New-activity defaults** come from `nowKzTimeRoundedDown(5)` for start and `addMinutesToTime(start, 60)` for end. Minimum duration is 15 min, enforced by both validation and the `min-time` prop on `TimePicker`.
 - **Time grid components** (`TimeGridDay.vue`, `TimeGridWeek.vue`) accept raw `Activity[]` and internally compute `startMinutes` / `visibleMinutes` via the composable's helpers. Day grid auto-distributes overlapping activities into columns. Midnight-spanning activities are clamped to the start day. Both grids render a reactive blue "now" line (ticks once a minute) on today's column.
-- **`TimePicker.vue`** is the shared hour/minute chooser. Chevron-down (top) decrements, chevron-up (bottom) increments; hour step 1, minute step 5; minute wrap does **not** carry into hour. `allow-end-of-day` extends the hour to 24, `min-time` disables decrements past the floor.
+- **`TimePicker.vue`** is the shared hour/minute chooser. Chevron-up (top) decrements, chevron-down (bottom) increments; hour step 1, minute step 5; minute wrap does **not** carry into hour. `allow-end-of-day` extends the hour to 24, `min-time` disables decrements past the floor.
 
 API endpoints (NestJS + MongoDB backend): `GET/POST /api/activities`, `GET/PATCH/DELETE /api/activities/:id`, with `from`/`to` query params on GET.
 

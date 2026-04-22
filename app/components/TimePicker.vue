@@ -92,7 +92,7 @@ function clear() {
         aria-label="Earlier hour"
         @click="bumpHour(-1)"
       >
-        <FontAwesomeIcon :icon="['fas', 'chevron-down']" />
+        <FontAwesomeIcon :icon="['fas', 'chevron-up']" />
       </button>
       <span class="text-lg tabular-nums leading-none py-1 min-w-[1.75em] text-center text-ink">
         {{ hourDisplay }}
@@ -104,7 +104,7 @@ function clear() {
         aria-label="Later hour"
         @click="bumpHour(1)"
       >
-        <FontAwesomeIcon :icon="['fas', 'chevron-up']" />
+        <FontAwesomeIcon :icon="['fas', 'chevron-down']" />
       </button>
     </div>
 
@@ -118,7 +118,7 @@ function clear() {
         :aria-label="`Earlier minute by ${step}`"
         @click="bumpMinute(-step)"
       >
-        <FontAwesomeIcon :icon="['fas', 'chevron-down']" />
+        <FontAwesomeIcon :icon="['fas', 'chevron-up']" />
       </button>
       <span class="text-lg tabular-nums leading-none py-1 min-w-[1.75em] text-center text-ink">
         {{ minuteDisplay }}
@@ -130,18 +130,18 @@ function clear() {
         :aria-label="`Later minute by ${step}`"
         @click="bumpMinute(step)"
       >
-        <FontAwesomeIcon :icon="['fas', 'chevron-up']" />
+        <FontAwesomeIcon :icon="['fas', 'chevron-down']" />
       </button>
     </div>
 
     <button
       v-if="!disabled && modelValue"
       type="button"
-      class="ml-1 w-6 h-6 flex items-center justify-center rounded-full border border-edge-strong text-ink-muted hover:border-danger hover:text-danger hover:bg-danger/10 text-base leading-none transition-colors"
+      class="ml-1 w-6 h-6 flex items-center justify-center rounded-full border border-edge-strong text-ink-muted hover:border-danger hover:text-danger hover:bg-danger/10 text-xs leading-none transition-colors"
       aria-label="Clear time"
       @click="clear"
     >
-      &times;
+      <FontAwesomeIcon :icon="['fas', 'xmark']" />
     </button>
   </div>
 </template>

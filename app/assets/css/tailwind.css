@@ -23,6 +23,10 @@
     @apply w-full px-3 py-2.5 rounded-lg border border-edge-strong bg-well text-ink text-base transition-colors focus:outline-none focus:border-accent;
   }
 
+  select.form-input {
+    @apply leading-none;
+  }
+
   .form-label {
     @apply flex flex-col gap-1.5 text-sm text-ink-soft;
   }

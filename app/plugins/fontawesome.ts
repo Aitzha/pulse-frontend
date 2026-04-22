@@ -11,6 +11,7 @@ import {
   faChevronUp,
   faChevronDown,
   faPlus,
+  faXmark,
 } from '@fortawesome/free-solid-svg-icons'
 import '@fortawesome/fontawesome-svg-core/styles.css'
 
@@ -27,6 +28,7 @@ library.add(
   faChevronUp,
   faChevronDown,
   faPlus,
+  faXmark,
 )
 
 export default defineNuxtPlugin((nuxtApp) => {
