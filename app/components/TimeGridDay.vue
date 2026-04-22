@@ -2,10 +2,11 @@
 import { computed } from 'vue'
 import type { Activity } from '~/composables/useActivities'
 import {
-  activityEndLabel,
+  activityEndLabelOn,
   activityStartLabel,
   activityStartMinutesOn,
   activityVisibleMinutesOn,
+  colorForActivity,
 } from '~/composables/useActivities'
 
 type Props = {
@@ -24,8 +25,6 @@ const emit = defineEmits<{
   activityClick: [activity: Activity]
   emptyClick: [minutes: number]
 }>()
-
-const { colorForCategory } = useActivities()
 
 const totalHeight = computed(() => 24 * 60 * props.pixelsPerMinute)
 const hours = computed(() => Array.from({ length: 24 }, (_, i) => i))
@@ -76,8 +75,8 @@ const placed = computed<PlacedActivity[]>(() => {
       column: 0,
       columns: 1,
       startLabel: activityStartLabel(it.activity),
-      endLabel: activityEndLabel(it.activity),
-      color: colorForCategory(it.activity.category),
+      endLabel: activityEndLabelOn(it.activity, props.date),
+      color: colorForActivity(it.activity),
       startMinutes: it.startMinutes,
       end,
     }

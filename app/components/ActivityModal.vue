@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { Activity, CreateActivityPayload } from '~/composables/useActivities'
+import type { Activity, ActivityCategory, CreateActivityPayload } from '~/composables/useActivities'
 import {
-  ACTIVITY_COLORS,
+  ACTIVITY_CATEGORIES,
+  ACTIVITY_SUBCATEGORIES_BY_CATEGORY,
   activityDate,
+  activityModalEndTime,
+  colorForSubcategory,
+  endMinutesForValidation,
+  endTimeToIso,
   isoFromKz,
   kzTimeFromISO,
   minutesFromTime,
@@ -14,25 +19,19 @@ type Props = {
   activity: Activity | null
   defaultDate: string
   defaultStart?: string | null
-  existingCategories?: string[]
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  defaultStart: null,
-  existingCategories: () => [],
-})
+const props = withDefaults(defineProps<Props>(), { defaultStart: null })
 
 const emit = defineEmits<{
   close: []
-  save: [value: { id?: string; payload: CreateActivityPayload; color: string }]
+  save: [value: { id?: string; payload: CreateActivityPayload }]
   remove: [id: string]
 }>()
 
-const { colorForCategory } = useActivities()
-
 const title = ref('')
-const category = ref('')
-const color = ref<string>(ACTIVITY_COLORS[0]!)
+const category = ref<ActivityCategory>(ACTIVITY_CATEGORIES[0])
+const subcategory = ref<string>(ACTIVITY_SUBCATEGORIES_BY_CATEGORY[ACTIVITY_CATEGORIES[0]][0]!)
 const date = ref('')
 const startTime = ref('09:00')
 const endTime = ref('')
@@ -40,6 +39,9 @@ const description = ref('')
 const error = ref('')
 
 const isEdit = computed(() => !!props.activity)
+
+const subcategoryOptions = computed(() => ACTIVITY_SUBCATEGORIES_BY_CATEGORY[category.value])
+const currentColor = computed(() => colorForSubcategory(subcategory.value))
 
 watch(
   () => [props.open, props.activity, props.defaultDate, props.defaultStart],
@@ -49,16 +51,20 @@ watch(
     if (props.activity) {
       const a = props.activity
       title.value = a.title
-      category.value = a.category
-      color.value = colorForCategory(a.category)
+      const cat = (ACTIVITY_CATEGORIES as readonly string[]).includes(a.category)
+        ? (a.category as ActivityCategory)
+        : ACTIVITY_CATEGORIES[0]
+      category.value = cat
+      const subs = ACTIVITY_SUBCATEGORIES_BY_CATEGORY[cat]
+      subcategory.value = subs.includes(a.subcategory) ? a.subcategory : subs[0]!
       date.value = activityDate(a)
       startTime.value = kzTimeFromISO(a.startTime)
-      endTime.value = a.endTime ? kzTimeFromISO(a.endTime) : ''
+      endTime.value = activityModalEndTime(a)
       description.value = a.description ?? ''
     } else {
       title.value = ''
-      category.value = ''
-      color.value = ACTIVITY_COLORS[0]!
+      category.value = ACTIVITY_CATEGORIES[0]
+      subcategory.value = ACTIVITY_SUBCATEGORIES_BY_CATEGORY[ACTIVITY_CATEGORIES[0]][0]!
       date.value = props.defaultDate
       startTime.value = props.defaultStart || '09:00'
       endTime.value = ''
@@ -68,40 +74,43 @@ watch(
   { immediate: true },
 )
 
-// Auto-adopt the existing color when the user types a known category.
-watch(category, (next) => {
-  if (!next) return
-  const existing = colorForCategory(next)
-  if (existing) color.value = existing
+// Keep subcategory valid when the category changes.
+watch(category, (next, prev) => {
+  if (next === prev) return
+  const subs = ACTIVITY_SUBCATEGORIES_BY_CATEGORY[next]
+  if (!subs.includes(subcategory.value)) subcategory.value = subs[0]!
 })
 
+function validate(): string | null {
+  if (!title.value.trim()) return 'Title is required'
+  if (!category.value) return 'Category is required'
+  if (!subcategory.value) return 'Subcategory is required'
+  if (!startTime.value) return 'Start time is required'
+  if (endTime.value) {
+    const startM = minutesFromTime(startTime.value)
+    const endM = endMinutesForValidation(endTime.value)
+    if (endM <= startM) return 'End time must be after start time'
+  }
+  return null
+}
+
 function submit() {
-  if (!title.value.trim()) {
-    error.value = 'Title is required'
-    return
-  }
-  if (!category.value.trim()) {
-    error.value = 'Category is required'
-    return
-  }
-  if (!startTime.value) {
-    error.value = 'Start time is required'
-    return
-  }
-  if (endTime.value && minutesFromTime(endTime.value) <= minutesFromTime(startTime.value)) {
-    error.value = 'End time must be after start time'
+  const err = validate()
+  if (err) {
+    error.value = err
     return
   }
   const payload: CreateActivityPayload = {
     title: title.value.trim(),
-    category: category.value.trim(),
+    category: category.value,
+    subcategory: subcategory.value,
     startTime: isoFromKz(date.value, startTime.value),
     description: description.value.trim() || undefined,
   }
   if (endTime.value) {
-    payload.endTime = isoFromKz(date.value, endTime.value)
+    payload.endTime = endTimeToIso(date.value, endTime.value)
   }
-  emit('save', { id: props.activity?.id, payload, color: color.value })
+  emit('save', { id: props.activity?.id, payload })
 }
 
 function onDelete() {
@@ -136,40 +145,27 @@ function onDelete() {
           <input v-model="title" class="form-input" placeholder="e.g. Standup meeting" />
         </label>
 
-        <label class="form-label">
-          Category
-          <input
-            v-model="category"
-            class="form-input"
-            list="activity-category-options"
-            placeholder="e.g. Work, Exercise, Sleep"
-          />
-          <datalist id="activity-category-options">
-            <option v-for="c in existingCategories" :key="c" :value="c" />
-          </datalist>
-        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="form-label">
+            Category
+            <select v-model="category" class="form-input">
+              <option v-for="c in ACTIVITY_CATEGORIES" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </label>
+          <label class="form-label">
+            Subcategory
+            <select v-model="subcategory" class="form-input">
+              <option v-for="s in subcategoryOptions" :key="s" :value="s">{{ s }}</option>
+            </select>
+          </label>
+        </div>
 
-        <div>
-          <span class="form-label mb-1.5">
-            Color
-            <span v-if="category" class="text-ink-muted text-xs font-normal">
-              (applies to all "{{ category }}" activities)
-            </span>
-          </span>
-          <div class="flex flex-wrap gap-2 mt-1.5">
-            <button
-              v-for="c in ACTIVITY_COLORS"
-              :key="c"
-              type="button"
-              class="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
-              :style="{
-                backgroundColor: c,
-                borderColor: color === c ? '#ffffff' : 'transparent',
-              }"
-              :aria-label="`Color ${c}`"
-              @click="color = c"
-            />
-          </div>
+        <div class="flex items-center gap-2 text-xs text-ink-muted">
+          <span
+            class="w-3.5 h-3.5 rounded-sm inline-block"
+            :style="{ backgroundColor: currentColor }"
+          />
+          <span>Color is set automatically based on subcategory.</span>
         </div>
 
         <label class="form-label">
@@ -178,14 +174,14 @@ function onDelete() {
         </label>
 
         <div class="grid grid-cols-2 gap-3">
-          <label class="form-label">
+          <div class="form-label">
             Start time
-            <input v-model="startTime" type="time" class="form-input" required />
-          </label>
-          <label class="form-label">
-            End time <span class="text-ink-muted">(optional)</span>
-            <input v-model="endTime" type="time" class="form-input" />
-          </label>
+            <TimePicker v-model="startTime" />
+          </div>
+          <div class="form-label">
+            End time <span class="text-ink-muted">(optional, 24:00 = end of day)</span>
+            <TimePicker v-model="endTime" :allow-end-of-day="true" />
+          </div>
         </div>
 
         <label class="form-label">

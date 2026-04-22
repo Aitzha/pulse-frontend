@@ -6,6 +6,7 @@ import {
   activityStartLabel,
   activityStartMinutesOn,
   activityVisibleMinutesOn,
+  colorForActivity,
   kzDateString,
   parseDate,
 } from '~/composables/useActivities'
@@ -21,8 +22,6 @@ const props = withDefaults(defineProps<Props>(), { pixelsPerMinute: 0.5 })
 const emit = defineEmits<{
   activityClick: [activity: Activity]
 }>()
-
-const { colorForCategory } = useActivities()
 
 const totalHeight = computed(() => 24 * 60 * props.pixelsPerMinute)
 const hours = computed(() => Array.from({ length: 24 }, (_, i) => i))
@@ -55,7 +54,7 @@ function placedForDay(dateStr: string): PlacedActivity[] {
       activity: a,
       top: activityStartMinutesOn(a, dateStr) * props.pixelsPerMinute,
       height: Math.max(8, activityVisibleMinutesOn(a, dateStr) * props.pixelsPerMinute),
-      color: colorForCategory(a.category),
+      color: colorForActivity(a),
       startLabel: activityStartLabel(a),
     }))
 }

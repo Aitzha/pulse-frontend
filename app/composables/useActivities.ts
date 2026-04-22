@@ -3,6 +3,7 @@ export type Activity = {
   title: string
   description?: string
   category: string
+  subcategory: string
   startTime: string // ISO 8601
   endTime?: string // ISO 8601
   durationMinutes?: number
@@ -13,26 +14,76 @@ export type UpdateActivityPayload = Partial<CreateActivityPayload>
 
 const KZ_TZ = 'Asia/Almaty'
 const KZ_OFFSET = '+05:00'
-const COLOR_STORAGE_KEY = 'pulse_activity_colors'
 
-export const ACTIVITY_COLORS = [
-  '#6ea8ff',
-  '#7cdba0',
-  '#ffb86b',
-  '#c792ea',
-  '#ff6b9d',
-  '#ffd166',
-  '#4fd1c5',
-  '#ff6b6b',
-  '#9aa3b2',
-  '#a0e7e5',
-]
+// ---------- taxonomy (mirrors backend enums; frontend uses string values) ----------
+
+export const ACTIVITY_CATEGORIES = [
+  'Work/Study',
+  'Routine',
+  'Unplanned',
+  'Health',
+] as const
+export type ActivityCategory = (typeof ACTIVITY_CATEGORIES)[number]
+
+export const ACTIVITY_SUBCATEGORIES_BY_CATEGORY: Record<ActivityCategory, readonly string[]> = {
+  'Work/Study': ['Programming', 'Drawing', 'Learning German'],
+  'Routine': [
+    'Morning Routine',
+    'Breakfast',
+    'Lunch',
+    'Dinner',
+    'Night Routine',
+    'Wash up',
+    'Tea Break',
+  ],
+  'Unplanned': ['Self Care', 'Other'],
+  'Health': ['Social', 'Gym', 'Sleep', 'Nap'],
+}
+
+// Fallback color if we see an unknown subcategory (defensive).
+const DEFAULT_COLOR = '#9aa3b2'
+
+// Preset colors per subcategory.
+// - Work/Study: blue theme, distinct shades per subcategory
+// - Routine:    all the same green (per spec)
+// - Unplanned:  orange/yellow theme, distinct shades
+// - Health:     pink theme, distinct shades
+const SUBCATEGORY_COLOR: Record<string, string> = {
+  // Work/Study
+  'Programming': '#3b82f6',
+  'Drawing': '#60a5fa',
+  'Learning German': '#6366f1',
+  // Routine (all same green)
+  'Morning Routine': '#34d399',
+  'Breakfast': '#34d399',
+  'Lunch': '#34d399',
+  'Dinner': '#34d399',
+  'Night Routine': '#34d399',
+  'Wash up': '#34d399',
+  'Tea Break': '#34d399',
+  // Unplanned
+  'Self Care': '#fbbf24',
+  'Other': '#f97316',
+  // Health
+  'Social': '#ec4899',
+  'Gym': '#f472b6',
+  'Sleep': '#be185d',
+  'Nap': '#fb7185',
+}
+
+export function colorForSubcategory(subcategory: string): string {
+  return SUBCATEGORY_COLOR[subcategory] ?? DEFAULT_COLOR
+}
+
+export function colorForActivity(a: Pick<Activity, 'subcategory'>): string {
+  return colorForSubcategory(a.subcategory)
+}
+
+// ---------- date/time helpers ----------
 
 function pad2(n: number) {
   return n.toString().padStart(2, '0')
 }
-
-// ---------- KZ date/time helpers ----------
 
 export function kzDateString(date: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -68,7 +119,6 @@ export function addDays(dateStr: string, delta: number): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 }
 
-// Monday-start week containing the given KZ date string.
 export function weekRange(dateStr: string): string[] {
   const d = parseDate(dateStr)
   const dow = d.getDay()
@@ -84,7 +134,6 @@ export function weekRange(dateStr: string): string[] {
   return out
 }
 
-// Get KZ HH:MM and YYYY-MM-DD from an ISO 8601 timestamp.
 export function kzTimeFromISO(iso: string): string {
   const d = new Date(iso)
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -106,9 +155,25 @@ export function isoFromKz(dateStr: string, time: string): string {
   return `${dateStr}T${time}:00${KZ_OFFSET}`
 }
 
+// Convert a picker "HH:MM" end-time (possibly "24:00" or "00:00" meaning end-of-day)
+// to an ISO string anchored at the given start date.
+export function endTimeToIso(startDate: string, endTime: string): string {
+  if (endTime === '24:00' || endTime === '00:00') {
+    return isoFromKz(addDays(startDate, 1), '00:00')
+  }
+  return isoFromKz(startDate, endTime)
+}
+
 export function minutesFromTime(time: string): number {
   const [h, m] = time.split(':').map(Number)
   return (h ?? 0) * 60 + (m ?? 0)
+}
+
+// For validation — treats "00:00" and "24:00" as end-of-day (1440).
+export function endMinutesForValidation(time: string): number {
+  if (!time) return -1
+  if (time === '00:00' || time === '24:00') return 24 * 60
+  return minutesFromTime(time)
 }
 
 export function timeFromMinutes(minutes: number): string {
@@ -133,75 +198,44 @@ export function activityDurationMinutes(a: Activity): number {
   return 60
 }
 
-// Minutes from KZ 00:00 of the given date. Clamped to [0, 1440].
 export function activityStartMinutesOn(a: Activity, dateStr: string): number {
   const aDate = activityDate(a)
-  if (aDate === dateStr) {
-    return minutesFromTime(kzTimeFromISO(a.startTime))
-  }
-  // activity started on a previous day and spills into dateStr
+  if (aDate === dateStr) return minutesFromTime(kzTimeFromISO(a.startTime))
   return 0
 }
 
-// Visible duration on a specific day (clamps activities spanning midnight).
 export function activityVisibleMinutesOn(a: Activity, dateStr: string): number {
+  const aDate = activityDate(a)
+  const startMinAbs = minutesFromTime(kzTimeFromISO(a.startTime))
+  const duration = activityDurationMinutes(a)
+  const offsetDays = (parseDate(dateStr).getTime() - parseDate(aDate).getTime()) / 86400000
+  const endAbsOnDay = startMinAbs + duration - offsetDays * 24 * 60
   const start = activityStartMinutesOn(a, dateStr)
-  const totalEndAbsMinutes = (() => {
-    const aDate = activityDate(a)
-    const startMinInAbs = minutesFromTime(kzTimeFromISO(a.startTime))
-    const duration = activityDurationMinutes(a)
-    // offset in days between activity's start date and the given date
-    const offsetDays =
-      (parseDate(dateStr).getTime() - parseDate(aDate).getTime()) / 86400000
-    return startMinInAbs + duration - offsetDays * 24 * 60
-  })()
-  const clamped = Math.min(24 * 60, totalEndAbsMinutes) - start
-  return Math.max(1, clamped)
+  return Math.max(1, Math.min(24 * 60, endAbsOnDay) - start)
 }
 
 export function activityStartLabel(a: Activity): string {
   return kzTimeFromISO(a.startTime)
 }
 
-export function activityEndLabel(a: Activity): string {
-  if (a.endTime) return kzTimeFromISO(a.endTime)
-  const startMin = minutesFromTime(kzTimeFromISO(a.startTime))
-  const endMin = startMin + activityDurationMinutes(a)
-  return timeFromMinutes(endMin % (24 * 60))
+// End-time label relative to a specific day. If the activity ends at or past
+// midnight of that day, returns "24:00" to make end-of-day clear.
+export function activityEndLabelOn(a: Activity, dateStr: string): string {
+  const start = activityStartMinutesOn(a, dateStr)
+  const visible = activityVisibleMinutesOn(a, dateStr)
+  const end = start + visible
+  if (end >= 24 * 60) return '24:00'
+  return timeFromMinutes(end)
 }
 
-// ---------- color-by-category persistence ----------
-
-function hashString(s: string): number {
-  let h = 0
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0
-  return h
-}
-
-function fallbackColor(category: string): string {
-  if (!category) return ACTIVITY_COLORS[0]!
-  return ACTIVITY_COLORS[hashString(category) % ACTIVITY_COLORS.length]!
-}
-
-function loadColorMap(): Record<string, string> {
-  if (!import.meta.client) return {}
-  try {
-    const raw = localStorage.getItem(COLOR_STORAGE_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw)
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveColorMap(map: Record<string, string>) {
-  if (!import.meta.client) return
-  try {
-    localStorage.setItem(COLOR_STORAGE_KEY, JSON.stringify(map))
-  } catch {
-    // ignore quota errors
-  }
+// Time to show in the modal's end-time picker for an existing activity.
+// If the activity ends at the next day's KZ 00:00, show "24:00".
+export function activityModalEndTime(a: Activity): string {
+  if (!a.endTime) return ''
+  const startDate = activityDate(a)
+  const endDate = kzDateFromISO(a.endTime)
+  if (endDate !== startDate) return '24:00'
+  return kzTimeFromISO(a.endTime)
 }
 
 // ---------- main composable ----------
@@ -209,32 +243,11 @@ function saveColorMap(map: Record<string, string>) {
 export function useActivities() {
   const { request } = useAuth()
   const activities = useState<Activity[]>('pulse_activities', () => [])
-  const categoryColors = useState<Record<string, string>>(
-    'pulse_category_colors',
-    () => ({}),
-  )
-  const colorsHydrated = useState<boolean>('pulse_category_colors_hydrated', () => false)
   const loading = useState<boolean>('pulse_activities_loading', () => false)
   const lastRange = useState<{ from: string; to: string } | null>(
     'pulse_activities_last_range',
     () => null,
   )
-
-  if (import.meta.client && !colorsHydrated.value) {
-    categoryColors.value = loadColorMap()
-    colorsHydrated.value = true
-  }
-
-  function colorForCategory(category: string): string {
-    if (!category) return ACTIVITY_COLORS[0]!
-    return categoryColors.value[category] ?? fallbackColor(category)
-  }
-
-  function setCategoryColor(category: string, color: string) {
-    if (!category) return
-    categoryColors.value = { ...categoryColors.value, [category]: color }
-    saveColorMap(categoryColors.value)
-  }
 
   function byDate(dateStr: string): Activity[] {
     return activities.value
@@ -252,15 +265,8 @@ export function useActivities() {
     return activities.value.filter(a => set.has(activityDate(a)))
   }
 
-  function categories(): string[] {
-    const set = new Set<string>()
-    for (const a of activities.value) if (a.category) set.add(a.category)
-    return Array.from(set).sort()
-  }
-
   async function loadRange(fromDate: string, toDate: string) {
     const from = `${fromDate}T00:00:00${KZ_OFFSET}`
-    // `to` is exclusive upper bound; pass start of day after toDate
     const to = `${addDays(toDate, 1)}T00:00:00${KZ_OFFSET}`
     loading.value = true
     try {
@@ -303,9 +309,8 @@ export function useActivities() {
     lastRange,
     byDate,
     inWeek,
-    categories,
-    colorForCategory,
-    setCategoryColor,
+    colorForSubcategory,
+    colorForActivity,
     loadRange,
     create,
     update,

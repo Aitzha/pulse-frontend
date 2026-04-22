@@ -16,8 +16,6 @@ const {
   loading,
   byDate,
   inWeek,
-  categories,
-  setCategoryColor,
   loadRange,
   create,
   update,
@@ -73,9 +71,8 @@ function closeModal() {
   prefillStart.value = null
 }
 
-async function onSave(ev: { id?: string; payload: CreateActivityPayload; color: string }) {
+async function onSave(ev: { id?: string; payload: CreateActivityPayload }) {
   errorMessage.value = ''
-  setCategoryColor(ev.payload.category, ev.color)
   try {
     if (ev.id) await update(ev.id, ev.payload)
     else await create(ev.payload)
@@ -218,7 +215,6 @@ function goToday() {
       :activity="editing"
       :default-date="selectedDate"
       :default-start="prefillStart"
-      :existing-categories="categories()"
       @close="closeModal"
       @save="onSave"
       @remove="onRemove"

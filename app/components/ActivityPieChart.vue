@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Activity } from '~/composables/useActivities'
-import { activityDurationMinutes } from '~/composables/useActivities'
+import { activityDurationMinutes, colorForSubcategory } from '~/composables/useActivities'
 
 type Props = {
   activities: Activity[]
@@ -10,10 +10,8 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), { size: 180 })
 
-const { colorForCategory } = useActivities()
-
 type Slice = {
-  category: string
+  label: string
   color: string
   hours: number
   fraction: number
@@ -22,15 +20,15 @@ type Slice = {
 const slices = computed<Slice[]>(() => {
   const map = new Map<string, number>()
   for (const a of props.activities) {
-    const key = a.category || 'Uncategorised'
+    const key = a.subcategory || a.category || 'Uncategorised'
     map.set(key, (map.get(key) ?? 0) + activityDurationMinutes(a))
   }
   const total = Array.from(map.values()).reduce((s, v) => s + v, 0)
   if (total === 0) return []
   return Array.from(map.entries())
-    .map(([category, minutes]) => ({
-      category,
-      color: colorForCategory(category),
+    .map(([label, minutes]) => ({
+      label,
+      color: colorForSubcategory(label),
       hours: minutes / 60,
       fraction: minutes / total,
     }))
@@ -40,7 +38,7 @@ const slices = computed<Slice[]>(() => {
 const totalHours = computed(() => slices.value.reduce((s, v) => s + v.hours, 0))
 
 type ArcPath = {
-  category: string
+  label: string
   color: string
   d: string
 }
@@ -53,7 +51,7 @@ const paths = computed<ArcPath[]>(() => {
     const s = slices.value[0]!
     return [
       {
-        category: s.category,
+        label: s.label,
         color: s.color,
         d: `M ${cx - r} ${cy} a ${r} ${r} 0 1 0 ${r * 2} 0 a ${r} ${r} 0 1 0 ${-r * 2} 0 Z`,
       },
@@ -69,7 +67,7 @@ const paths = computed<ArcPath[]>(() => {
     const largeArc = sweep > Math.PI ? 1 : 0
     const d = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`
     angle += sweep
-    return { category: s.category, color: s.color, d }
+    return { label: s.label, color: s.color, d }
   })
 })
 
@@ -88,7 +86,7 @@ function formatHours(h: number): string {
       <svg :width="size" :height="size" viewBox="0 0 120 120" class="block">
         <path
           v-for="p in paths"
-          :key="p.category"
+          :key="p.label"
           :d="p.d"
           :fill="p.color"
           stroke="#171a21"
@@ -110,9 +108,9 @@ function formatHours(h: number): string {
       </svg>
 
       <ul class="w-full flex flex-col gap-1.5 text-sm">
-        <li v-for="s in slices" :key="s.category" class="flex items-center gap-2">
+        <li v-for="s in slices" :key="s.label" class="flex items-center gap-2">
           <span class="w-3 h-3 rounded-sm flex-shrink-0" :style="{ backgroundColor: s.color }" />
-          <span class="flex-1 truncate">{{ s.category }}</span>
+          <span class="flex-1 truncate">{{ s.label }}</span>
           <span class="text-ink-muted tabular-nums">{{ formatHours(s.hours) }}</span>
           <span class="text-ink-muted tabular-nums text-xs w-10 text-right">
             {{ Math.round(s.fraction * 100) }}%
