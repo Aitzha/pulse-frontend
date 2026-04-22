@@ -181,6 +181,23 @@ export function timeFromMinutes(minutes: number): string {
   return `${pad2(Math.floor(clamped / 60))}:${pad2(clamped % 60)}`
 }
 
+// Current KZ time rounded down to the nearest `step` minutes (default 5).
+export function nowKzTimeRoundedDown(step = 5, date: Date = new Date()): string {
+  const hhmm = kzTimeFromISO(date.toISOString())
+  const [h, m] = hhmm.split(':').map(Number)
+  const roundedMin = Math.floor((m ?? 0) / step) * step
+  return `${pad2(h ?? 0)}:${pad2(roundedMin)}`
+}
+
+export function addMinutesToTime(time: string, delta: number): string {
+  return timeFromMinutes(minutesFromTime(time) + delta)
+}
+
+// Current minutes from KZ 00:00 — used to draw the "now" line on the time grid.
+export function nowKzMinutes(date: Date = new Date()): number {
+  return minutesFromTime(kzTimeFromISO(date.toISOString()))
+}
+
 // ---------- activity-derived helpers ----------
 
 export function activityDate(a: Activity): string {

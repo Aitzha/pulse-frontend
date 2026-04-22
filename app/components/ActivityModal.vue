@@ -6,13 +6,17 @@ import {
   ACTIVITY_SUBCATEGORIES_BY_CATEGORY,
   activityDate,
   activityModalEndTime,
+  addMinutesToTime,
   colorForSubcategory,
   endMinutesForValidation,
   endTimeToIso,
   isoFromKz,
   kzTimeFromISO,
   minutesFromTime,
+  nowKzTimeRoundedDown,
 } from '~/composables/useActivities'
+
+const MIN_DURATION_MINUTES = 15
 
 type Props = {
   open: boolean
@@ -66,8 +70,9 @@ watch(
       category.value = ACTIVITY_CATEGORIES[0]
       subcategory.value = ACTIVITY_SUBCATEGORIES_BY_CATEGORY[ACTIVITY_CATEGORIES[0]][0]!
       date.value = props.defaultDate
-      startTime.value = props.defaultStart || '09:00'
-      endTime.value = ''
+      const start = props.defaultStart || nowKzTimeRoundedDown(5)
+      startTime.value = start
+      endTime.value = addMinutesToTime(start, 60)
       description.value = ''
     }
   },
@@ -81,6 +86,10 @@ watch(category, (next, prev) => {
   if (!subs.includes(subcategory.value)) subcategory.value = subs[0]!
 })
 
+const minEndTime = computed(() =>
+  addMinutesToTime(startTime.value || '00:00', MIN_DURATION_MINUTES),
+)
+
 function validate(): string | null {
   if (!title.value.trim()) return 'Title is required'
   if (!category.value) return 'Category is required'
@@ -89,10 +98,23 @@ function validate(): string | null {
   if (endTime.value) {
     const startM = minutesFromTime(startTime.value)
     const endM = endMinutesForValidation(endTime.value)
-    if (endM <= startM) return 'End time must be after start time'
+    if (endM < startM + MIN_DURATION_MINUTES) {
+      return `End time must be at least ${MIN_DURATION_MINUTES} minutes after start time`
+    }
   }
   return null
 }
+
+// Keep end time valid when the user moves the start time forward.
+watch(startTime, (next) => {
+  if (!endTime.value) return
+  if (endTime.value === '24:00' || endTime.value === '00:00') return
+  const startM = minutesFromTime(next)
+  const endM = minutesFromTime(endTime.value)
+  if (endM < startM + MIN_DURATION_MINUTES) {
+    endTime.value = addMinutesToTime(next, MIN_DURATION_MINUTES)
+  }
+})
 
 function submit() {
   const err = validate()
@@ -180,7 +202,7 @@ function onDelete() {
           </div>
           <div class="form-label">
             <span>End time <span class="text-ink-muted">(optional)</span></span>
-            <TimePicker v-model="endTime" :allow-end-of-day="true" />
+            <TimePicker v-model="endTime" :allow-end-of-day="true" :min-time="minEndTime" />
           </div>
         </div>
 

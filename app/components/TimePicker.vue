@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { minutesFromTime } from '~/composables/useActivities'
 
 type Props = {
   modelValue: string
   allowEndOfDay?: boolean
   step?: number
   disabled?: boolean
+  minTime?: string // "HH:MM" — decrements below this are blocked
 }
 
 const props = withDefaults(defineProps<Props>(), {
   allowEndOfDay: false,
   step: 5,
   disabled: false,
+  minTime: '',
 })
 
 const emit = defineEmits<{ 'update:modelValue': [string] }>()
@@ -33,30 +36,41 @@ const minuteDisplay = computed(() =>
   props.modelValue ? props.modelValue.split(':')[1] ?? '--' : '--',
 )
 
-// Disable minute controls when at 24:00 (end-of-day sentinel).
 const minuteLocked = computed(
   () => props.allowEndOfDay && hourDisplay.value === '24',
 )
 
-function bumpHour(delta: number) {
-  if (props.disabled) return
-  const { h, m } = current()
-  const range = props.allowEndOfDay ? 25 : 24 // 0..(range-1)
-  const nh = ((h + delta) % range + range) % range
-  const nm = nh === 24 ? 0 : m
+const minMinutes = computed(() => (props.minTime ? minutesFromTime(props.minTime) : -1))
+
+function emitValue(nh: number, nm: number) {
+  const candidate = nh * 60 + nm
+  if (candidate < minMinutes.value) return
   emit('update:modelValue', `${pad(nh)}:${pad(nm)}`)
 }
 
+function bumpHour(delta: number) {
+  if (props.disabled) return
+  const { h, m } = current()
+  const range = props.allowEndOfDay ? 25 : 24
+  const nh = ((h + delta) % range + range) % range
+  const nm = nh === 24 ? 0 : m
+  emitValue(nh, nm)
+}
+
+// Independent minute wrap — does NOT spill into hour.
 function bumpMinute(delta: number) {
   if (props.disabled || minuteLocked.value) return
   const { h, m } = current()
-  let total = h * 60 + m + delta
-  const mod = props.allowEndOfDay ? 1441 : 1440
-  total = ((total % mod) + mod) % mod
-  const nh = Math.floor(total / 60)
-  const nm = total % 60
-  emit('update:modelValue', `${pad(nh)}:${pad(nm)}`)
+  const nm = ((m + delta) % 60 + 60) % 60
+  emitValue(h, nm)
 }
+
+// Disable the decrement arrows when already at or below the minimum.
+const atMinimum = computed(() => {
+  if (minMinutes.value < 0) return false
+  const { h, m } = current()
+  return h * 60 + m <= minMinutes.value
+})
 
 function clear() {
   emit('update:modelValue', '')
@@ -73,24 +87,24 @@ function clear() {
     <div class="flex flex-col items-stretch select-none">
       <button
         type="button"
-        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-40 disabled:hover:text-ink-muted"
-        :disabled="disabled"
-        aria-label="Increment hour"
-        @click="bumpHour(1)"
+        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
+        :disabled="disabled || atMinimum"
+        aria-label="Earlier hour"
+        @click="bumpHour(-1)"
       >
-        <FontAwesomeIcon :icon="['fas', 'chevron-up']" />
+        <FontAwesomeIcon :icon="['fas', 'chevron-down']" />
       </button>
       <span class="text-lg tabular-nums leading-none py-1 min-w-[1.75em] text-center text-ink">
         {{ hourDisplay }}
       </span>
       <button
         type="button"
-        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-40 disabled:hover:text-ink-muted"
+        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
         :disabled="disabled"
-        aria-label="Decrement hour"
-        @click="bumpHour(-1)"
+        aria-label="Later hour"
+        @click="bumpHour(1)"
       >
-        <FontAwesomeIcon :icon="['fas', 'chevron-down']" />
+        <FontAwesomeIcon :icon="['fas', 'chevron-up']" />
       </button>
     </div>
 
@@ -99,31 +113,31 @@ function clear() {
     <div class="flex flex-col items-stretch select-none">
       <button
         type="button"
-        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-40 disabled:hover:text-ink-muted"
-        :disabled="disabled || minuteLocked"
-        :aria-label="`Increment minute by ${step}`"
-        @click="bumpMinute(step)"
+        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
+        :disabled="disabled || minuteLocked || atMinimum"
+        :aria-label="`Earlier minute by ${step}`"
+        @click="bumpMinute(-step)"
       >
-        <FontAwesomeIcon :icon="['fas', 'chevron-up']" />
+        <FontAwesomeIcon :icon="['fas', 'chevron-down']" />
       </button>
       <span class="text-lg tabular-nums leading-none py-1 min-w-[1.75em] text-center text-ink">
         {{ minuteDisplay }}
       </span>
       <button
         type="button"
-        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-40 disabled:hover:text-ink-muted"
+        class="text-ink-muted hover:text-accent text-[10px] leading-none py-0.5 rounded transition-colors disabled:opacity-30 disabled:hover:text-ink-muted"
         :disabled="disabled || minuteLocked"
-        :aria-label="`Decrement minute by ${step}`"
-        @click="bumpMinute(-step)"
+        :aria-label="`Later minute by ${step}`"
+        @click="bumpMinute(step)"
       >
-        <FontAwesomeIcon :icon="['fas', 'chevron-down']" />
+        <FontAwesomeIcon :icon="['fas', 'chevron-up']" />
       </button>
     </div>
 
     <button
       v-if="!disabled && modelValue"
       type="button"
-      class="text-ink-muted hover:text-ink text-sm ml-1"
+      class="ml-1 w-6 h-6 flex items-center justify-center rounded-full border border-edge-strong text-ink-muted hover:border-danger hover:text-danger hover:bg-danger/10 text-base leading-none transition-colors"
       aria-label="Clear time"
       @click="clear"
     >

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Activity } from '~/composables/useActivities'
 import {
   activityDate,
@@ -8,6 +8,7 @@ import {
   activityVisibleMinutesOn,
   colorForActivity,
   kzDateString,
+  nowKzMinutes,
   parseDate,
 } from '~/composables/useActivities'
 
@@ -25,7 +26,18 @@ const emit = defineEmits<{
 
 const totalHeight = computed(() => 24 * 60 * props.pixelsPerMinute)
 const hours = computed(() => Array.from({ length: 24 }, (_, i) => i))
-const today = kzDateString()
+
+const now = ref(new Date())
+let tick: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  tick = setInterval(() => (now.value = new Date()), 60_000)
+})
+onBeforeUnmount(() => {
+  if (tick) clearInterval(tick)
+})
+
+const today = computed(() => kzDateString(now.value))
+const currentMinutes = computed(() => nowKzMinutes(now.value))
 
 const dayHeaders = computed(() =>
   props.days.map(d => {
@@ -34,7 +46,7 @@ const dayHeaders = computed(() =>
       dateStr: d,
       weekday: date.toLocaleDateString('en-US', { weekday: 'short' }),
       dayNum: date.getDate(),
-      isToday: d === today,
+      isToday: d === today.value,
     }
   }),
 )
@@ -106,6 +118,13 @@ function formatHour(h: number): string {
             class="absolute left-0 right-0 border-t border-edge/60 pointer-events-none"
             :style="{ top: `${h * 60 * pixelsPerMinute}px` }"
           />
+          <div
+            v-if="d === today"
+            class="absolute left-0 right-0 h-0.5 bg-accent pointer-events-none z-20"
+            :style="{ top: `${currentMinutes * pixelsPerMinute}px` }"
+          >
+            <span class="absolute -left-1 -top-1 w-2 h-2 rounded-full bg-accent" />
+          </div>
           <button
             v-for="p in placedForDay(d)"
             :key="p.activity.id"

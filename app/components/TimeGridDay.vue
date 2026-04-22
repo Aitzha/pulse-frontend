@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { Activity } from '~/composables/useActivities'
 import {
   activityEndLabelOn,
@@ -7,6 +7,8 @@ import {
   activityStartMinutesOn,
   activityVisibleMinutesOn,
   colorForActivity,
+  kzDateString,
+  nowKzMinutes,
 } from '~/composables/useActivities'
 
 type Props = {
@@ -28,6 +30,19 @@ const emit = defineEmits<{
 
 const totalHeight = computed(() => 24 * 60 * props.pixelsPerMinute)
 const hours = computed(() => Array.from({ length: 24 }, (_, i) => i))
+
+// "Now" line — reactive, ticks once a minute.
+const now = ref(new Date())
+let tick: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  tick = setInterval(() => (now.value = new Date()), 60_000)
+})
+onBeforeUnmount(() => {
+  if (tick) clearInterval(tick)
+})
+
+const isToday = computed(() => props.date === kzDateString(now.value))
+const currentMinutes = computed(() => nowKzMinutes(now.value))
 
 type PlacedActivity = {
   activity: Activity
@@ -144,6 +159,14 @@ function formatHour(h: number): string {
         class="absolute left-0 right-0 border-t border-dashed border-edge/30 pointer-events-none"
         :style="{ top: `${(h * 60 + 30) * pixelsPerMinute}px` }"
       />
+
+      <div
+        v-if="isToday"
+        class="absolute left-0 right-0 h-0.5 bg-accent pointer-events-none z-20"
+        :style="{ top: `${currentMinutes * pixelsPerMinute}px` }"
+      >
+        <span class="absolute -left-1 -top-1 w-2.5 h-2.5 rounded-full bg-accent shadow" />
+      </div>
 
       <button
         v-for="p in placed"
