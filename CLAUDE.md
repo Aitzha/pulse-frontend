@@ -72,3 +72,17 @@ API endpoints (NestJS + MongoDB backend): `GET/POST /api/activities`, `GET/PATCH
 ## Commit messages
 
 Write commit subjects that describe the actual change in a few words — "Fix subcategory select resetting on edit", "Add current-time line to day grid" — not generic labels like "activity page improvements" or "misc fixes". The subject is the only part most readers see; make it earn its line.
+
+## Pull requests
+
+Keep PR descriptions to a short Summary only — no "Test plan" section, no checklists. The author verifies the change themselves.
+
+## Merging (vibe-kanban squash)
+
+Branches from vibe-kanban are merged into `main` as a **squash commit**, and the squash subject is the vibe-kanban task title (e.g. `Activity page improvements (vibe-kanban AIT-10)`). Individual commit subjects on the task branch are discarded at merge time.
+
+This means the only commit-message knob that actually reaches `main` is the task title. Before asking for a merge:
+
+- Make sure the vibe-kanban task title follows the "Commit messages" rule above — it should describe the actual change, not the feature area. "Disable Add/Save when end time is before start" is good; "Activity page improvements" is not.
+- If the task title drifted while the task was in progress (e.g. scope narrowed), rename the task to match the final change before merging.
+- Per-commit subjects on the branch are still worth writing well — they show up in PR reviews and in the branch history — but treat them as ephemeral: the squash will replace them.
