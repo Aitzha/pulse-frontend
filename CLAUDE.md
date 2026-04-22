@@ -18,7 +18,7 @@ There are no lint or test scripts configured yet.
 
 ### State
 
-No Pinia/Vuex. Cross-component state lives in composables that wrap `useState('<key>', () => ...)` (SSR-safe) plus `useCookie` for auth. The pattern: one composable per feature exposes reactive state and mutator functions (see `useAuth`, `useActivities`). Persistence is either cookies (auth) or `localStorage` via `import.meta.client` guards (colour preferences).
+No Pinia/Vuex. Cross-component state lives in composables that wrap `useState('<key>', () => ...)` (SSR-safe) plus `useCookie` for auth. The pattern: one composable per feature exposes reactive state and mutator functions (see `useAuth`, `useActivities`). Persistence is either cookies (auth cookies survive reloads) or server state fetched on demand.
 
 ### Auth
 
@@ -53,13 +53,22 @@ To use a new icon: import it in the plugin (e.g. `faChartLine`), pass it to `lib
 The `/activities` page is implemented and backed by `useActivities()` (`app/composables/useActivities.ts`). Key conventions that span multiple files:
 
 - **Kazakhstan timezone is authoritative.** All date labels, day boundaries, and the "today" default are computed in `Asia/Almaty` (UTC+5, no DST). The page sends ISO 8601 timestamps with a literal `+05:00` offset (`isoFromKz(date, "HH:MM")`) and reads them back through `Intl.DateTimeFormat` with `timeZone: 'Asia/Almaty'` (`kzTimeFromISO`, `kzDateFromISO`). Never compare raw `Date` objects for day equality — always go through `kzDateString`/`kzDateFromISO`.
-- **Activity shape matches backend DTOs** (`title`, `category`, `startTime: ISO`, optional `endTime: ISO`, optional `durationMinutes`, optional `description`). `activityDurationMinutes()` resolves the effective duration in priority order: `endTime - startTime`, else `durationMinutes`, else 60. That fallback is what makes open-ended activities render as a 1h block.
-- **Colour is a client-only concern.** The backend has no colour field. `useActivities` maintains a `category → hex` map in `localStorage` (key `pulse_activity_colors`); `colorForCategory(category)` returns the stored colour or a deterministic hash fallback from `ACTIVITY_COLORS`. Editing a colour in the modal rewrites the whole category, not just one activity.
+- **Activity shape matches backend DTOs** (`title`, `category`, `subcategory`, `startTime: ISO`, optional `endTime: ISO`, optional `durationMinutes`, optional `description`). `activityDurationMinutes()` resolves the effective duration in priority order: `endTime - startTime`, else `durationMinutes`, else 60. That fallback is what makes open-ended activities render as a 1h block.
+- **Category/subcategory are enums**, not free text. The allowed values mirror the backend and live in `ACTIVITY_CATEGORIES` + `ACTIVITY_SUBCATEGORIES_BY_CATEGORY`. The modal uses `<select>`s and resets subcategory when the category changes.
+- **Colour is derived from subcategory**, not user-picked and not persisted. `SUBCATEGORY_COLOR` inside `useActivities.ts` maps each subcategory to a preset hex (blues for Work/Study, shared green for Routine, orange/yellow for Unplanned, pinks for Health). Use `colorForActivity(a)` / `colorForSubcategory(sub)` in components.
+- **Normalise backend responses.** Activities come back from MongoDB as `_id`, so `useActivities` funnels everything through `normalizeActivity()` to expose `id: string`. Without this, edit silently turns into create and delete hits `/api/activities/undefined`. Always pipe new fetch/create/update results through it.
 - **Fetching is week-scoped.** The page calls `loadRange(mondayOfWeek, sundayOfWeek)` whenever the week's Monday changes; switching between days inside the same week is a pure client-side filter. `from` is inclusive (`Monday 00:00 +05:00`); `to` is exclusive (`nextMonday 00:00 +05:00`).
-- **Time grid components** (`TimeGridDay.vue`, `TimeGridWeek.vue`) accept raw `Activity[]` and internally compute `startMinutes` / `visibleMinutes` via the composable's helpers. Day grid auto-distributes overlapping activities into columns. Midnight-spanning activities are clamped to the start day.
+- **End-of-day sentinel.** The UI lets users set the end time to `24:00` (or `00:00`) to mean "until end of day"; `endTimeToIso()` translates that to the next day's `00:00 +05:00` ISO, and `activityEndLabelOn()` / `activityModalEndTime()` render it back as `24:00` on the start day.
+- **New-activity defaults** come from `nowKzTimeRoundedDown(5)` for start and `addMinutesToTime(start, 60)` for end. Minimum duration is 15 min, enforced by both validation and the `min-time` prop on `TimePicker`.
+- **Time grid components** (`TimeGridDay.vue`, `TimeGridWeek.vue`) accept raw `Activity[]` and internally compute `startMinutes` / `visibleMinutes` via the composable's helpers. Day grid auto-distributes overlapping activities into columns. Midnight-spanning activities are clamped to the start day. Both grids render a reactive blue "now" line (ticks once a minute) on today's column.
+- **`TimePicker.vue`** is the shared hour/minute chooser. Chevron-down (top) decrements, chevron-up (bottom) increments; hour step 1, minute step 5; minute wrap does **not** carry into hour. `allow-end-of-day` extends the hour to 24, `min-time` disables decrements past the floor.
 
-API endpoints used: `GET/POST /api/activities`, `PATCH/DELETE /api/activities/:id`, with `from`/`to` query params on GET.
+API endpoints (NestJS + MongoDB backend): `GET/POST /api/activities`, `GET/PATCH/DELETE /api/activities/:id`, with `from`/`to` query params on GET.
 
 ### Planned features
 
 `Finances` and `Goals` tiles on the home dashboard (`app/pages/index.vue`) are still placeholders.
+
+## Commit messages
+
+Write commit subjects that describe the actual change in a few words — "Fix subcategory select resetting on edit", "Add current-time line to day grid" — not generic labels like "activity page improvements" or "misc fixes". The subject is the only part most readers see; make it earn its line.
