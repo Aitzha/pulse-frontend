@@ -129,7 +129,7 @@ function formatHour(h: number): string {
             v-for="p in placedForDay(d)"
             :key="p.activity.id"
             type="button"
-            class="absolute left-0.5 right-0.5 rounded text-ink-inverse px-1 text-[10px] text-left overflow-hidden shadow-sm hover:scale-[1.02] hover:z-10 transition-transform focus:outline-none focus:ring-1 focus:ring-white/60"
+            class="absolute left-0.5 right-0.5 rounded text-ink-inverse px-1 text-xs text-left overflow-hidden shadow-sm hover:scale-[1.02] hover:z-10 transition-transform focus:outline-none focus:ring-1 focus:ring-white/60"
             :style="{
               top: `${p.top}px`,
               height: `${p.height}px`,
@@ -138,7 +138,7 @@ function formatHour(h: number): string {
             @click="emit('activityClick', p.activity)"
           >
             <div class="font-semibold leading-tight truncate">{{ p.activity.title }}</div>
-            <div v-if="p.height > 22" class="opacity-80 leading-tight truncate">
+            <div v-if="p.height > 26" class="font-medium leading-tight truncate">
               {{ p.startLabel }}
             </div>
           </button>
