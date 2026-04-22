@@ -182,15 +182,15 @@ function formatHour(h: number): string {
         }"
         @click="emit('activityClick', p.activity)"
       >
-        <div class="font-semibold text-xs leading-tight truncate">
+        <div class="font-semibold text-sm leading-tight truncate">
           {{ p.activity.title }}
         </div>
-        <div class="text-[10px] opacity-80 leading-tight">
+        <div class="text-xs font-medium leading-tight">
           {{ p.startLabel }}–{{ p.endLabel }}
         </div>
         <div
-          v-if="showDescription && p.activity.description && p.height > 44"
-          class="text-[11px] mt-0.5 opacity-90 leading-snug line-clamp-3"
+          v-if="showDescription && p.activity.description && p.height > 52"
+          class="text-xs mt-0.5 opacity-90 leading-snug line-clamp-3"
         >
           {{ p.activity.description }}
         </div>
